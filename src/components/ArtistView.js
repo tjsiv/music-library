@@ -1,49 +1,75 @@
-import { useEffect, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import Spinner from './Spinner'
+import { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import Spinner from './Spinner';
 
 const ArtistView = () => {
-    const { id } = useParams()
-    const navigate = useNavigate()
-    const [ artistData, setArtistData ] = useState([])
-    
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [artistData, setArtistData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     useEffect(() => {
-        const API_URL = `http://localhost:3000/album/${id}`
-        const fetchData = async () => {
-            const response = await fetch(API_URL)
-            const resData = await response.json()
-            setArtistData(resData.results)
+        if (!id) {
+            setError('No artist ID provided');
+            setLoading(false);
+            return;
         }
-        fetchData()
-    }, [id])
- 
-    const allAlbums = artistData.filter(entity => entity.collectionType === 'Album')
-    .map((album, i) => {
-        return (
+
+        const fetchArtistData = async () => {
+            try {
+                const response = await fetch(`http://localhost:4000/album/${id}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const resData = await response.json();
+                console.log('Fetched artist data:', resData); // Log the fetched data for debugging
+                setArtistData(resData.results);
+            } catch (error) {
+                console.error('Error fetching artist data:', error);
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchArtistData();
+    }, [id]);
+
+    const navButtons = () => (
+        <div>
+            <button onClick={() => navigate(-1)}>Back</button>
+            |
+            <button onClick={() => navigate('/')}>Home</button>
+        </div>
+    );
+
+    const renderAlbums = () => (
+        artistData.filter(entity => entity.collectionType === 'Album').map((album, i) => (
             <div key={i}>
                 <Link to={`/album/${album.collectionId}`}>
                     <p>{album.collectionName}</p>
                 </Link>
-            </div>)
-        })
-
-    const navButtons = () => {
-        return (
-            <div>
-                <button onClick={() => navigate(-1)}>Back</button>
-                |
-                <button onClick={() => navigate('/')}>Home</button>
             </div>
-        )
+        ))
+    );
+
+    if (loading) {
+        return <Spinner />;
+    }
+
+    if (error) {
+        return <div>Error: {error}</div>;
     }
 
     return (
         <div>
-            {artistData.length > 0 ? <h2>{artistData[0].artistName}</h2> : <Spinner />}
+            {artistData.length > 0 ? <h2>{artistData[0].artistName}</h2> : <div>No artist data found</div>}
             {navButtons()}
-            {allAlbums}
+            {renderAlbums()}
         </div>
-    )
-}
+    );
+};
 
-export default ArtistView
+export default ArtistView;
+
+
